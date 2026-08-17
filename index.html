@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>柴犬のお散歩ゲーム</title>
+<style>
+  :root {
+    --sky-top: #bfe8ff;
+    --sky-bottom: #eafff0;
+    --grass: #8fd48a;
+    --grass-dark: #7ac97a;
+    --ui-bg: rgba(255,255,255,0.9);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: "Hiragino Maru Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+    overflow: hidden;
+    background: linear-gradient(to bottom, var(--sky-top) 0%, var(--sky-bottom) 55%, var(--grass) 56%, var(--grass-dark) 100%);
+  }
+
+  /* ===== Header / Score ===== */
+  #scoreBar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: var(--ui-bg);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 50;
+    font-size: 22px;
+    font-weight: bold;
+    color: #5a3a1a;
+    letter-spacing: 1px;
+  }
+  #scoreBar .icon { font-size: 26px; }
+  #scoreValue {
+    color: #e0762a;
+    min-width: 3ch;
+    display: inline-block;
+    text-align: right;
+  }
+
+  /* ===== Start Screen ===== */
+  #startScreen {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(160deg, #ffe9c7, #ffd3a6);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    gap: 28px;
+  }
+  #startScreen h1 {
+    color: #7a4a1e;
+    font-size: 32px;
+    margin: 0;
+    text-shadow: 1px 1px 0 #fff;
+  }
+  #startScreen p.sub {
+    margin: -18px 0 0 0;
+    color: #935f28;
+    font-size: 14px;
+  }
+  .dog-choices {
+    display: flex;
+    gap: 26px;
+  }
+  .dog-choice {
+    background: #fffaf1;
+    border: 3px solid transparent;
+    border-radius: 20px;
+    padding: 18px 16px 14px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 130px;
+    transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+  }
+  .dog-choice:hover {
+    transform: translateY(-6px) scale(1.04);
+    border-color: #ffb454;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.18);
+  }
+  .dog-choice .preview {
+    width: 78px;
+    height: 78px;
+    position: relative;
+  }
+  .dog-choice span.label {
+    font-weight: bold;
+    color: #6b4423;
+    font-size: 16px;
+  }
+  #startHint {
+    color: #935f28;
+    font-size: 13px;
+    margin-top: -8px;
+  }
+
+  /* ===== Game area ===== */
+  #gameArea {
+    position: absolute;
+    inset: 0;
+    top: 56px;
+  }
+
+  /* Decorative background grass tufts */
+  .tuft {
+    position: absolute;
+    width: 14px;
+    height: 20px;
+    background: var(--grass-dark);
+    border-radius: 50% 50% 0 0;
+    opacity: 0.6;
+  }
+
+  /* ===== Dog ===== */
+  .dog {
+    position: absolute;
+    width: 54px;
+    height: 46px;
+    z-index: 10;
+    transition: transform 0.08s linear;
+  }
+  .dog .body {
+    position: absolute;
+    left: 4px; top: 12px;
+    width: 46px; height: 30px;
+    border-radius: 50% 50% 45% 45%;
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.06);
+  }
+  .dog .head {
+    position: absolute;
+    left: 20px; top: -6px;
+    width: 30px; height: 26px;
+    border-radius: 50%;
+    z-index: 2;
+  }
+  .dog .ear {
+    position: absolute;
+    width: 12px; height: 14px;
+    border-radius: 60% 60% 10% 10%;
+    top: -10px;
+    z-index: 1;
+  }
+  .dog .ear.left { left: 18px; transform: rotate(-15deg); }
+  .dog .ear.right { left: 34px; transform: rotate(15deg); }
+  .dog .muzzle {
+    position: absolute;
+    left: 30px; top: 6px;
+    width: 16px; height: 12px;
+    background: #fff6e8;
+    border-radius: 50%;
+    z-index: 3;
+  }
+  .dog .nose {
+    position: absolute;
+    left: 38px; top: 8px;
+    width: 5px; height: 4px;
+    background: #3a2a1a;
+    border-radius: 50%;
+    z-index: 4;
+  }
+  .dog .eye {
+    position: absolute;
+    width: 3px; height: 3px;
+    background: #2a1a0f;
+    border-radius: 50%;
+    top: 3px;
+    z-index: 4;
+  }
+  .dog .eye.left { left: 26px; }
+  .dog .eye.right { left: 34px; }
+  .dog .tail {
+    position: absolute;
+    left: -6px; top: 4px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    z-index: 0;
+  }
+  .dog .leg {
+    position: absolute;
+    width: 6px; height: 10px;
+    bottom: -6px;
+    border-radius: 3px;
+  }
+  .dog .leg.l1 { left: 8px; }
+  .dog .leg.l2 { left: 34px; }
+  .dog.facing-left { transform: scaleX(-1); }
+
+  /* color themes */
+  .dog.brown .body, .dog.brown .head, .dog.brown .ear, .dog.brown .tail, .dog.brown .leg { background: #cf8a3d; }
+  .dog.white .body, .dog.white .head, .dog.white .tail, .dog.white .leg { background: #fbf6ea; border: 1px solid #eaddc0; }
+  .dog.white .ear { background: #e7c294; }
+  .dog.black .body, .dog.black .head, .dog.black .tail, .dog.black .leg { background: #3b332c; }
+  .dog.black .ear { background: #3b332c; }
+  .dog.black .muzzle { background: #e9c99a; }
+
+  /* ===== Markings (pee) ===== */
+  .marking {
+    position: absolute;
+    width: 20px;
+    height: 12px;
+    background: radial-gradient(ellipse at center, rgba(230, 214, 90, 0.85) 0%, rgba(230, 214, 90, 0.35) 60%, transparent 100%);
+    border-radius: 50%;
+    z-index: 1;
+    pointer-events: none;
+    animation: markFade 0.4s ease-out;
+  }
+  @keyframes markFade {
+    from { transform: scale(0.2); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  /* ===== Flowers ===== */
+  .flower {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    z-index: 2;
+    pointer-events: none;
+    animation: flowerPop 0.35s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes flowerPop {
+    from { transform: scale(0); }
+    to { transform: scale(1); }
+  }
+  .flower .stem {
+    position: absolute;
+    left: 50%;
+    top: 60%;
+    width: 3px;
+    height: 14px;
+    background: #4c9a4c;
+    transform: translateX(-50%);
+  }
+  .flower .petal {
+    position: absolute;
+    width: 10px;
+    height: 14px;
+    left: 10px;
+    top: 2px;
+    border-radius: 50%;
+    transform-origin: 50% 22px;
+  }
+  .sunflower .petal { background: #ffcb3d; }
+  .sunflower .center {
+    position: absolute;
+    left: 8px; top: 6px;
+    width: 14px; height: 14px;
+    background: #7a4a1e;
+    border-radius: 50%;
+  }
+  .tulip .cup {
+    position: absolute;
+    left: 7px; top: 2px;
+    width: 16px; height: 18px;
+    background: #ff5d7a;
+    border-radius: 50% 50% 40% 40% / 60% 60% 40% 40%;
+    box-shadow: inset -3px 0 0 rgba(0,0,0,0.08);
+  }
+  .tulip .leaf {
+    position: absolute;
+    left: 4px; top: 16px;
+    width: 10px; height: 4px;
+    background: #4c9a4c;
+    border-radius: 50%;
+    transform: rotate(20deg);
+  }
+  .mimosa .puff {
+    position: absolute;
+    width: 6px; height: 6px;
+    background: #ffd23f;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.0);
+  }
+
+  /* score popup */
+  .scorePopup {
+    position: absolute;
+    z-index: 30;
+    font-weight: bold;
+    font-size: 18px;
+    color: #e0762a;
+    pointer-events: none;
+    animation: popUp 0.8s ease-out forwards;
+    text-shadow: 1px 1px 0 #fff;
+  }
+  @keyframes popUp {
+    from { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(-40px); opacity: 0; }
+  }
+
+  #controlsHint {
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ui-bg);
+    padding: 6px 14px;
+    border-radius: 14px;
+    font-size: 13px;
+    color: #5a3a1a;
+    z-index: 40;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  }
+</style>
+</head>
+<body>
+
+  <div id="scoreBar">
+    <span class="icon">🐾</span>
+    <span>スコア:</span>
+    <span id="scoreValue">0</span>
+  </div>
+
+  <div id="gameArea"></div>
+
+  <div id="controlsHint">矢印キーで移動しよう。花にふれるとスコアGET！</div>
+
+  <div id="startScreen">
+    <h1>柴犬のお散歩ゲーム</h1>
+    <p class="sub">お散歩する柴犬を選んでね</p>
+    <div class="dog-choices">
+      <div class="dog-choice" data-breed="brown">
+        <div class="preview">
+          <div class="dog brown" style="position:relative; left:0; top:6px;">
+            <div class="tail"></div>
+            <div class="leg l1"></div>
+            <div class="leg l2"></div>
+            <div class="body"></div>
+            <div class="ear left"></div>
+            <div class="ear right"></div>
+            <div class="head"></div>
+            <div class="muzzle"></div>
+            <div class="nose"></div>
+            <div class="eye left"></div>
+            <div class="eye right"></div>
+          </div>
+        </div>
+        <span class="label">茶柴</span>
+      </div>
+      <div class="dog-choice" data-breed="white">
+        <div class="preview">
+          <div class="dog white" style="position:relative; left:0; top:6px;">
+            <div class="tail"></div>
+            <div class="leg l1"></div>
+            <div class="leg l2"></div>
+            <div class="body"></div>
+            <div class="ear left"></div>
+            <div class="ear right"></div>
+            <div class="head"></div>
+            <div class="muzzle"></div>
+            <div class="nose"></div>
+            <div class="eye left"></div>
+            <div class="eye right"></div>
+          </div>
+        </div>
+        <span class="label">白柴</span>
+      </div>
+      <div class="dog-choice" data-breed="black">
+        <div class="preview">
+          <div class="dog black" style="position:relative; left:0; top:6px;">
+            <div class="tail"></div>
+            <div class="leg l1"></div>
+            <div class="leg l2"></div>
+            <div class="body"></div>
+            <div class="ear left"></div>
+            <div class="ear right"></div>
+            <div class="head"></div>
+            <div class="muzzle"></div>
+            <div class="nose"></div>
+            <div class="eye left"></div>
+            <div class="eye right"></div>
+          </div>
+        </div>
+        <span class="label">黒柴</span>
+      </div>
+    </div>
+    <p id="startHint">クリックして選択するとスタートします</p>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  var gameArea = document.getElementById("gameArea");
+  var scoreValueEl = document.getElementById("scoreValue");
+  var startScreen = document.getElementById("startScreen");
+
+  var score = 0;
+  function addScore(points, x, y) {
+    score += points;
+    scoreValueEl.textContent = score;
+    var popup = document.createElement("div");
+    popup.className = "scorePopup";
+    popup.textContent = "+" + points;
+    popup.style.left = x + "px";
+    popup.style.top = y + "px";
+    gameArea.appendChild(popup);
+    setTimeout(function () { popup.remove(); }, 820);
+  }
+
+  // ---- decorative grass tufts ----
+  function scatterTufts() {
+    var w = gameArea.clientWidth;
+    var h = gameArea.clientHeight;
+    for (var i = 0; i < 18; i++) {
+      var t = document.createElement("div");
+      t.className = "tuft";
+      t.style.left = Math.random() * w + "px";
+      t.style.top = (h * 0.55 + Math.random() * h * 0.4) + "px";
+      gameArea.appendChild(t);
+    }
+  }
+
+  // ---- Dog setup ----
+  var DOG_W = 54, DOG_H = 46;
+  var dogEl = null;
+  var breed = "brown";
+  var dogX = 200, dogY = 200;
+  var facingLeft = false;
+
+  function buildDog(selectedBreed) {
+    var el = document.createElement("div");
+    el.className = "dog " + selectedBreed;
+    el.innerHTML =
+      '<div class="tail"></div>' +
+      '<div class="leg l1"></div>' +
+      '<div class="leg l2"></div>' +
+      '<div class="body"></div>' +
+      '<div class="ear left"></div>' +
+      '<div class="ear right"></div>' +
+      '<div class="head"></div>' +
+      '<div class="muzzle"></div>' +
+      '<div class="nose"></div>' +
+      '<div class="eye left"></div>' +
+      '<div class="eye right"></div>';
+    return el;
+  }
+
+  // ---- Markings & flowers ----
+  var MARK_INTERVAL = 42; // px of travel between markings
+  var distSinceMark = 9999;
+  var markings = []; // {el, x, y}
+  var flowers = [];  // {el, x, y, points, radius}
+
+  var FLOWER_TYPES = [
+    { name: "sunflower", weight: 15, points: 50, radius: 15, build: buildSunflower },
+    { name: "tulip",     weight: 35, points: 10, radius: 14, build: buildTulip },
+    { name: "mimosa",    weight: 50, points: 5,  radius: 13, build: buildMimosa }
+  ];
+  var TOTAL_WEIGHT = FLOWER_TYPES.reduce(function (s, f) { return s + f.weight; }, 0);
+
+  function pickFlowerType() {
+    var r = Math.random() * TOTAL_WEIGHT;
+    for (var i = 0; i < FLOWER_TYPES.length; i++) {
+      if (r < FLOWER_TYPES[i].weight) return FLOWER_TYPES[i];
+      r -= FLOWER_TYPES[i].weight;
+    }
+    return FLOWER_TYPES[FLOWER_TYPES.length - 1];
+  }
+
+  function buildSunflower(container) {
+    container.classList.add("sunflower");
+    var stem = document.createElement("div");
+    stem.className = "stem";
+    container.appendChild(stem);
+    var petalCount = 8;
+    for (var i = 0; i < petalCount; i++) {
+      var p = document.createElement("div");
+      p.className = "petal";
+      p.style.transform = "rotate(" + (i * (360 / petalCount)) + "deg)";
+      container.appendChild(p);
+    }
+    var center = document.createElement("div");
+    center.className = "center";
+    container.appendChild(center);
+  }
+
+  function buildTulip(container) {
+    container.classList.add("tulip");
+    var stem = document.createElement("div");
+    stem.className = "stem";
+    container.appendChild(stem);
+    var leaf = document.createElement("div");
+    leaf.className = "leaf";
+    container.appendChild(leaf);
+    var cup = document.createElement("div");
+    cup.className = "cup";
+    container.appendChild(cup);
+  }
+
+  function buildMimosa(container) {
+    container.classList.add("mimosa");
+    var stem = document.createElement("div");
+    stem.className = "stem";
+    stem.style.background = "#6fae52";
+    container.appendChild(stem);
+    var positions = [
+      [8,4],[15,2],[22,4],[5,10],[12,9],[19,10],[26,9],[9,15],[16,14],[23,15]
+    ];
+    for (var i = 0; i < positions.length; i++) {
+      var puff = document.createElement("div");
+      puff.className = "puff";
+      puff.style.left = positions[i][0] + "px";
+      puff.style.top = positions[i][1] + "px";
+      container.appendChild(puff);
+    }
+  }
+
+  function addMarking(x, y) {
+    var el = document.createElement("div");
+    el.className = "marking";
+    el.style.left = (x - 10) + "px";
+    el.style.top = (y - 6) + "px";
+    gameArea.appendChild(el);
+    var record = { el: el, x: x, y: y, done: false };
+    markings.push(record);
+
+    var delay = 3000 + Math.random() * 3000; // 3〜6秒
+    setTimeout(function () {
+      if (record.done) return;
+      record.done = true;
+      record.el.remove();
+      markings.splice(markings.indexOf(record), 1);
+      spawnFlower(x, y);
+    }, delay);
+  }
+
+  function spawnFlower(x, y) {
+    var type = pickFlowerType();
+    var el = document.createElement("div");
+    el.className = "flower";
+    el.style.left = (x - 15) + "px";
+    el.style.top = (y - 15) + "px";
+    type.build(el);
+    gameArea.appendChild(el);
+    flowers.push({ el: el, x: x, y: y, points: type.points, radius: type.radius });
+  }
+
+  // ---- Movement ----
+  var keys = {};
+  window.addEventListener("keydown", function (e) {
+    if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.key) !== -1) {
+      keys[e.key] = true;
+      e.preventDefault();
+    }
+  });
+  window.addEventListener("keyup", function (e) {
+    keys[e.key] = false;
+  });
+
+  var SPEED = 220; // px per second
+  var lastTime = null;
+
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+  function tick(timestamp) {
+    if (lastTime === null) lastTime = timestamp;
+    var dt = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+    if (dt > 0.1) dt = 0.1;
+
+    if (dogEl) {
+      var dx = 0, dy = 0;
+      if (keys["ArrowUp"]) dy -= 1;
+      if (keys["ArrowDown"]) dy += 1;
+      if (keys["ArrowLeft"]) dx -= 1;
+      if (keys["ArrowRight"]) dx += 1;
+
+      if (dx !== 0 || dy !== 0) {
+        var len = Math.sqrt(dx * dx + dy * dy);
+        dx = (dx / len) * SPEED * dt;
+        dy = (dy / len) * SPEED * dt;
+
+        var w = gameArea.clientWidth;
+        var h = gameArea.clientHeight;
+        dogX = clamp(dogX + dx, 0, w - DOG_W);
+        dogY = clamp(dogY + dy, 0, h - DOG_H);
+
+        if (dx < 0 && !facingLeft) { facingLeft = true; dogEl.classList.add("facing-left"); }
+        else if (dx > 0 && facingLeft) { facingLeft = false; dogEl.classList.remove("facing-left"); }
+
+        dogEl.style.left = dogX + "px";
+        dogEl.style.top = dogY + "px";
+
+        var moved = Math.sqrt(dx * dx + dy * dy);
+        distSinceMark += moved;
+        if (distSinceMark >= MARK_INTERVAL) {
+          distSinceMark = 0;
+          addMarking(dogX + DOG_W / 2, dogY + DOG_H - 6);
+        }
+      }
+
+      // collision with flowers
+      var dogCenterX = dogX + DOG_W / 2;
+      var dogCenterY = dogY + DOG_H / 2;
+      var dogRadius = 22;
+      for (var i = flowers.length - 1; i >= 0; i--) {
+        var f = flowers[i];
+        var ddx = dogCenterX - f.x;
+        var ddy = dogCenterY - f.y;
+        var dist = Math.sqrt(ddx * ddx + ddy * ddy);
+        if (dist < dogRadius + f.radius) {
+          addScore(f.points, f.x, f.y - 20);
+          f.el.remove();
+          flowers.splice(i, 1);
+        }
+      }
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  // ---- Start screen handling ----
+  var choices = document.querySelectorAll(".dog-choice");
+  choices.forEach(function (choice) {
+    choice.addEventListener("click", function () {
+      breed = choice.getAttribute("data-breed");
+      startGame();
+    });
+  });
+
+  function startGame() {
+    startScreen.style.display = "none";
+    scatterTufts();
+
+    dogEl = buildDog(breed);
+    var w = gameArea.clientWidth;
+    var h = gameArea.clientHeight;
+    dogX = w / 2 - DOG_W / 2;
+    dogY = h / 2 - DOG_H / 2;
+    dogEl.style.left = dogX + "px";
+    dogEl.style.top = dogY + "px";
+    gameArea.appendChild(dogEl);
+
+    requestAnimationFrame(tick);
+  }
+})();
+</script>
+</body>
+</html>
