@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>柴犬のお散歩ゲーム</title>
+<title>柴犬のお散歩ゲーム〜拒否柴解放大作戦〜</title>
 <style>
   :root {
     --sky-top: #bfe8ff;
@@ -48,6 +48,42 @@
     display: inline-block;
     text-align: right;
   }
+  #episodeCounter {
+    font-size: 14px;
+    color: #7a4a1e;
+    background: #ffe9c7;
+    border-radius: 10px;
+    padding: 3px 10px;
+    margin-left: 6px;
+  }
+
+  /* ===== Refusal banner ===== */
+  #refusalBanner {
+    position: fixed;
+    top: 56px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-14px);
+    background: linear-gradient(180deg, #ff8383, #ff5d5d);
+    color: #fff;
+    padding: 8px 20px;
+    border-radius: 0 0 16px 16px;
+    font-weight: bold;
+    font-size: 15px;
+    z-index: 45;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.2);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    text-shadow: 1px 1px 0 rgba(0,0,0,0.15);
+  }
+  #refusalBanner.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  #refusalBanner .time {
+    font-variant-numeric: tabular-nums;
+    margin-left: 8px;
+  }
 
   /* ===== Start Screen ===== */
   #startScreen {
@@ -63,14 +99,16 @@
   }
   #startScreen h1 {
     color: #7a4a1e;
-    font-size: 32px;
+    font-size: 30px;
     margin: 0;
     text-shadow: 1px 1px 0 #fff;
+    text-align: center;
   }
   #startScreen p.sub {
     margin: -18px 0 0 0;
     color: #935f28;
     font-size: 14px;
+    text-align: center;
   }
   .dog-choices {
     display: flex;
@@ -109,7 +147,75 @@
     color: #935f28;
     font-size: 13px;
     margin-top: -8px;
+    text-align: center;
   }
+
+  /* ===== Result Screen ===== */
+  #resultScreen {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(160deg, #ffe9c7, #ffd3a6);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 110;
+    gap: 14px;
+  }
+  #resultScreen h1 {
+    color: #7a4a1e;
+    font-size: 28px;
+    margin: 0;
+    text-shadow: 1px 1px 0 #fff;
+  }
+  #resultTotal {
+    font-size: 20px;
+    color: #5a3a1a;
+    font-weight: bold;
+  }
+  #resultTotalValue {
+    color: #e0762a;
+    font-size: 26px;
+  }
+  #resultTableWrap {
+    background: #fffaf1;
+    border-radius: 14px;
+    padding: 10px 18px;
+    max-height: 220px;
+    overflow-y: auto;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+  }
+  #resultTable {
+    border-collapse: collapse;
+    font-size: 14px;
+    color: #5a3a1a;
+  }
+  #resultTable th, #resultTable td {
+    padding: 4px 12px;
+    text-align: center;
+  }
+  #resultTable th {
+    border-bottom: 2px solid #ffb454;
+  }
+  #resultFlowerBonus {
+    font-size: 14px;
+    color: #6b8f4e;
+    font-weight: bold;
+  }
+  #playAgainBtn {
+    margin-top: 6px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    background: linear-gradient(180deg, #ffb454, #e0762a);
+    border: none;
+    border-radius: 22px;
+    padding: 12px 30px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+    transition: transform 0.12s;
+  }
+  #playAgainBtn:hover { transform: translateY(-3px); }
 
   /* ===== Game area ===== */
   #gameArea {
@@ -128,6 +234,45 @@
     opacity: 0.6;
   }
 
+  /* ===== Gesture canvas ===== */
+  #gestureCanvas {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+    touch-action: none;
+  }
+  #gestureCanvas.active {
+    pointer-events: auto;
+    cursor: crosshair;
+  }
+
+  /* ===== Bakery icon ===== */
+  #bakeryIcon {
+    position: absolute;
+    right: 22px;
+    bottom: 30px;
+    z-index: 8;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    pointer-events: none;
+  }
+  #bakeryIcon .emoji {
+    font-size: 32px;
+    filter: drop-shadow(1px 3px 1px rgba(0,0,0,0.2));
+  }
+  #bakeryIcon .sign {
+    background: #fff3d6;
+    border: 2px solid #c98a3d;
+    border-radius: 6px;
+    padding: 1px 7px;
+    font-size: 11px;
+    color: #7a4a1e;
+    font-weight: bold;
+  }
+
   /* ===== Dog ===== */
   .dog {
     position: absolute;
@@ -136,79 +281,188 @@
     z-index: 10;
     transition: transform 0.08s linear;
   }
+  .dog .shadow {
+    position: absolute;
+    left: 5px;
+    bottom: -7px;
+    width: 44px;
+    height: 10px;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.12) 60%, transparent 100%);
+    border-radius: 50%;
+    z-index: 0;
+    filter: blur(0.5px);
+  }
+  .dog .dogInner {
+    position: absolute;
+    inset: 0;
+    transform-origin: 50% 100%;
+    animation: dogBreathe 2.4s ease-in-out infinite;
+  }
+  @keyframes dogBreathe {
+    0%, 100% { transform: scaleY(1); }
+    50% { transform: scaleY(1.035); }
+  }
   .dog .body {
     position: absolute;
     left: 4px; top: 12px;
     width: 46px; height: 30px;
-    border-radius: 50% 50% 45% 45%;
-    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.06);
+    border-radius: 58% 42% 55% 45% / 48% 45% 55% 52%;
+    box-shadow: inset 0 -5px 6px rgba(0,0,0,0.12);
+    background: radial-gradient(ellipse at 32% 22%, var(--fur-a) 0%, var(--fur-b) 55%, var(--fur-c) 100%);
   }
   .dog .head {
     position: absolute;
     left: 20px; top: -6px;
     width: 30px; height: 26px;
-    border-radius: 50%;
+    border-radius: 55% 45% 48% 52% / 55% 52% 48% 45%;
     z-index: 2;
+    background: radial-gradient(ellipse at 35% 28%, var(--fur-a) 0%, var(--fur-b) 60%, var(--fur-c) 100%);
+    transition: transform 0.2s ease;
   }
   .dog .ear {
     position: absolute;
-    width: 12px; height: 14px;
-    border-radius: 60% 60% 10% 10%;
-    top: -10px;
+    width: 13px; height: 16px;
+    top: -11px;
     z-index: 1;
+    background: radial-gradient(circle at 35% 25%, var(--fur-a), var(--fur-b) 75%);
+    clip-path: polygon(50% 0%, 100% 88%, 62% 100%, 38% 100%, 0% 88%);
+    transition: transform 0.2s ease;
   }
-  .dog .ear.left { left: 18px; transform: rotate(-15deg); }
-  .dog .ear.right { left: 34px; transform: rotate(15deg); }
+  .dog .ear::after {
+    content: "";
+    position: absolute;
+    left: 3px; top: 6px;
+    width: 6px; height: 7px;
+    background: var(--tan);
+    opacity: 0.55;
+    border-radius: 50%;
+  }
+  .dog .ear.left { left: 17px; transform: rotate(-18deg); }
+  .dog .ear.right { left: 33px; transform: rotate(18deg); }
   .dog .muzzle {
     position: absolute;
     left: 30px; top: 6px;
     width: 16px; height: 12px;
-    background: #fff6e8;
+    background: linear-gradient(180deg, #fff8ec, #fdeecb);
     border-radius: 50%;
     z-index: 3;
   }
+  .dog .muzzle::before, .dog .muzzle::after {
+    content: "";
+    position: absolute;
+    width: 9px; height: 9px;
+    background: radial-gradient(circle at 40% 35%, #fffdf8, #fdeecb 80%);
+    border-radius: 50%;
+    bottom: -3px;
+  }
+  .dog .muzzle::before { left: -5px; }
+  .dog .muzzle::after { right: -5px; }
   .dog .nose {
     position: absolute;
     left: 38px; top: 8px;
     width: 5px; height: 4px;
-    background: #3a2a1a;
+    background: #2e2018;
     border-radius: 50%;
     z-index: 4;
+    box-shadow: inset -1px -1px 0 rgba(0,0,0,0.3), 1px -1px 0 rgba(255,255,255,0.25);
   }
   .dog .eye {
     position: absolute;
     width: 3px; height: 3px;
     background: #2a1a0f;
-    border-radius: 50%;
+    border-radius: 60% 60% 50% 50%;
     top: 3px;
     z-index: 4;
+    box-shadow: inset 1px -1px 0 rgba(255,255,255,0.5);
+    transition: height 0.2s ease, border-radius 0.2s ease, box-shadow 0.2s ease;
   }
   .dog .eye.left { left: 26px; }
   .dog .eye.right { left: 34px; }
+  .dog.brown .eye::before, .dog.black .eye::before {
+    content: "";
+    position: absolute;
+    width: 5px; height: 3px;
+    background: var(--tan);
+    opacity: 0.7;
+    border-radius: 50%;
+    top: -4px;
+    left: -1px;
+  }
   .dog .tail {
     position: absolute;
     left: -6px; top: 4px;
     width: 16px; height: 16px;
-    border-radius: 50%;
+    border-radius: 65% 35% 60% 40%;
     z-index: 0;
+    background: radial-gradient(circle at 40% 35%, var(--fur-a), var(--fur-c) 85%);
+    box-shadow: inset -2px -2px 0 rgba(0,0,0,0.08);
+    transform-origin: 80% 55%;
+    animation: dogTailWag 0.9s ease-in-out infinite;
+  }
+  @keyframes dogTailWag {
+    0%, 100% { transform: rotate(-8deg); }
+    50% { transform: rotate(14deg); }
   }
   .dog .leg {
     position: absolute;
     width: 6px; height: 10px;
     bottom: -6px;
     border-radius: 3px;
+    background: linear-gradient(180deg, var(--fur-b), var(--fur-c));
+    transition: height 0.2s ease, bottom 0.2s ease, opacity 0.2s ease;
   }
   .dog .leg.l1 { left: 8px; }
   .dog .leg.l2 { left: 34px; }
   .dog.facing-left { transform: scaleX(-1); }
 
-  /* color themes */
-  .dog.brown .body, .dog.brown .head, .dog.brown .ear, .dog.brown .tail, .dog.brown .leg { background: #cf8a3d; }
-  .dog.white .body, .dog.white .head, .dog.white .tail, .dog.white .leg { background: #fbf6ea; border: 1px solid #eaddc0; }
-  .dog.white .ear { background: #e7c294; }
-  .dog.black .body, .dog.black .head, .dog.black .tail, .dog.black .leg { background: #3b332c; }
-  .dog.black .ear { background: #3b332c; }
-  .dog.black .muzzle { background: #e9c99a; }
+  .dog .speechBubble {
+    position: absolute;
+    top: -25px;
+    left: 14px;
+    font-size: 19px;
+    opacity: 0;
+    transform: scale(0.5) translateY(6px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+    z-index: 6;
+  }
+
+  /* color themes (gradient tokens) */
+  .dog.brown { --fur-a:#f0c690; --fur-b:#cf8a3d; --fur-c:#a3691f; --tan:#5c3a18; }
+  .dog.white { --fur-a:#ffffff; --fur-b:#fbf6ea; --fur-c:#dfd0a8; --tan:#c9b98c; }
+  .dog.black { --fur-a:#6b5f52; --fur-b:#3b332c; --fur-c:#211b16; --tan:#e9c99a; }
+
+  /* ===== Refusing (拒否柴) pose ===== */
+  .dog.refusing .dogInner {
+    animation: dogStubbornShake 0.4s ease-in-out infinite;
+  }
+  @keyframes dogStubbornShake {
+    0%, 100% { transform: translateY(6px) scaleY(0.82) translateX(-2px); }
+    50% { transform: translateY(6px) scaleY(0.82) translateX(2px); }
+  }
+  .dog.refusing .leg { height: 3px; bottom: -2px; opacity: 0.55; }
+  .dog.refusing .head { transform: rotate(-8deg); }
+  .dog.refusing .ear.left { transform: rotate(-42deg); }
+  .dog.refusing .ear.right { transform: rotate(42deg); }
+  .dog.refusing .eye { height: 1px; border-radius: 2px; box-shadow: none; }
+  .dog.refusing .tail { animation: none; transform: rotate(-20deg); }
+  .dog.refusing .speechBubble {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    animation: dogBubbleBob 1.6s ease-in-out infinite;
+  }
+  @keyframes dogBubbleBob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+
+  /* fail-recognition head shake */
+  @keyframes dogHeadNo {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-16deg); }
+    75% { transform: rotate(16deg); }
+  }
+  .dog.reactNo .head { animation: dogHeadNo 0.32s ease-in-out; }
 
   /* ===== Markings (pee) ===== */
   .marking {
@@ -305,6 +559,22 @@
     to { transform: translateY(-40px); opacity: 0; }
   }
 
+  /* success burst */
+  .burst {
+    position: absolute;
+    z-index: 25;
+    pointer-events: none;
+  }
+  .burst .spark {
+    position: absolute;
+    font-size: 16px;
+    animation: sparkOut 0.6s ease-out forwards;
+  }
+  @keyframes sparkOut {
+    from { transform: translate(0, 0) scale(0.4); opacity: 1; }
+    to { transform: translate(var(--dx), var(--dy)) scale(1); opacity: 0; }
+  }
+
   #controlsHint {
     position: fixed;
     bottom: 10px;
@@ -317,6 +587,9 @@
     color: #5a3a1a;
     z-index: 40;
     box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    text-align: center;
+    max-width: 92%;
+    pointer-events: none;
   }
 </style>
 </head>
@@ -326,86 +599,136 @@
     <span class="icon">🐾</span>
     <span>スコア:</span>
     <span id="scoreValue">0</span>
+    <span id="episodeCounter">拒否柴 0/8</span>
   </div>
 
-  <div id="gameArea"></div>
+  <div id="refusalBanner">拒否柴発生！がんばって機嫌を直そう<span id="refusalBannerTime" class="time">0.0秒</span></div>
 
-  <div id="controlsHint">矢印キーで移動しよう。花にふれるとスコアGET！</div>
+  <div id="gameArea">
+    <canvas id="gestureCanvas"></canvas>
+    <div id="bakeryIcon"><span class="emoji">🥖</span><span class="sign">パン屋</span></div>
+  </div>
+
+  <div id="controlsHint">矢印キーで移動。花にふれてスコアGET。柴犬が座り込んだら、ペンでジェスチャーして機嫌を直そう！</div>
 
   <div id="startScreen">
-    <h1>柴犬のお散歩ゲーム</h1>
+    <h1>柴犬のお散歩ゲーム<br>〜拒否柴解放大作戦〜</h1>
     <p class="sub">お散歩する柴犬を選んでね</p>
     <div class="dog-choices">
       <div class="dog-choice" data-breed="brown">
-        <div class="preview">
-          <div class="dog brown" style="position:relative; left:0; top:6px;">
-            <div class="tail"></div>
-            <div class="leg l1"></div>
-            <div class="leg l2"></div>
-            <div class="body"></div>
-            <div class="ear left"></div>
-            <div class="ear right"></div>
-            <div class="head"></div>
-            <div class="muzzle"></div>
-            <div class="nose"></div>
-            <div class="eye left"></div>
-            <div class="eye right"></div>
-          </div>
-        </div>
+        <div class="preview"></div>
         <span class="label">茶柴</span>
       </div>
       <div class="dog-choice" data-breed="white">
-        <div class="preview">
-          <div class="dog white" style="position:relative; left:0; top:6px;">
-            <div class="tail"></div>
-            <div class="leg l1"></div>
-            <div class="leg l2"></div>
-            <div class="body"></div>
-            <div class="ear left"></div>
-            <div class="ear right"></div>
-            <div class="head"></div>
-            <div class="muzzle"></div>
-            <div class="nose"></div>
-            <div class="eye left"></div>
-            <div class="eye right"></div>
-          </div>
-        </div>
+        <div class="preview"></div>
         <span class="label">白柴</span>
       </div>
       <div class="dog-choice" data-breed="black">
-        <div class="preview">
-          <div class="dog black" style="position:relative; left:0; top:6px;">
-            <div class="tail"></div>
-            <div class="leg l1"></div>
-            <div class="leg l2"></div>
-            <div class="body"></div>
-            <div class="ear left"></div>
-            <div class="ear right"></div>
-            <div class="head"></div>
-            <div class="muzzle"></div>
-            <div class="nose"></div>
-            <div class="eye left"></div>
-            <div class="eye right"></div>
-          </div>
-        </div>
+        <div class="preview"></div>
         <span class="label">黒柴</span>
       </div>
     </div>
     <p id="startHint">クリックして選択するとスタートします</p>
   </div>
 
+  <div id="resultScreen">
+    <h1>おつかれさま！</h1>
+    <div id="resultTotal">合計スコア: <span id="resultTotalValue">0</span></div>
+    <div id="resultTableWrap">
+      <table id="resultTable">
+        <thead><tr><th>#</th><th>タイム</th><th>スコア</th></tr></thead>
+        <tbody id="resultTableBody"></tbody>
+      </table>
+    </div>
+    <div id="resultFlowerBonus">花ボーナス: <span id="resultFlowerValue">0</span></div>
+    <button id="playAgainBtn">もう一度あそぶ</button>
+  </div>
+
 <script>
 (function () {
   "use strict";
 
+  // ==================== 定数 ====================
+  var TOTAL_EPISODES = 8;
+  var SAFETY_TIME_LIMIT_MS = 300000; // 5分
+
+  var NEXT_REFUSAL_MIN_MS = 4000;
+  var NEXT_REFUSAL_MAX_MS = 9000;
+  var FIRST_REFUSAL_MIN_ELAPSED_MS = 1200;
+  var FIRST_REFUSAL_MIN_DISTANCE_PX = 30;
+
+  var MIN_POINTS = 6;
+  var MIN_DURATION_MS = 80;
+  var DOG_PROXIMITY_RADIUS = 70;
+
+  var BASE_SCORE = 100;
+  var DECAY_PER_SEC = 6;
+  var MIN_SCORE = 20;
+
+  // ==================== DOM参照 ====================
   var gameArea = document.getElementById("gameArea");
   var scoreValueEl = document.getElementById("scoreValue");
+  var episodeCounterEl = document.getElementById("episodeCounter");
   var startScreen = document.getElementById("startScreen");
+  var refusalBannerEl = document.getElementById("refusalBanner");
+  var refusalBannerTimeEl = document.getElementById("refusalBannerTime");
+  var gestureCanvas = document.getElementById("gestureCanvas");
+  var gctx = gestureCanvas.getContext("2d");
+  var bakeryIcon = document.getElementById("bakeryIcon");
+  var resultScreen = document.getElementById("resultScreen");
+  var resultTotalValueEl = document.getElementById("resultTotalValue");
+  var resultFlowerValueEl = document.getElementById("resultFlowerValue");
+  var resultTableBodyEl = document.getElementById("resultTableBody");
+  var playAgainBtn = document.getElementById("playAgainBtn");
 
-  var score = 0;
-  function addScore(points, x, y) {
-    score += points;
-    scoreValueEl.textContent = score;
+  // ==================== ゲーム状態 ====================
+  // "BREED_SELECT" | "WALKING" | "REFUSING" | "RESULT"
+  var state = "BREED_SELECT";
+
+  var episodes = [];       // {index, duration, score, gesture}
+  var episodeIndex = 0;
+  var flowerBonusTotal = 0;
+
+  var gameStartTime = null;
+  var totalDistanceWalked = 0;
+  var firstRefusalDone = false;
+  var refusalTimerFireAt = Infinity;
+  var refusalStartTime = 0;
+  var dogHistory = [];        // {x,y,t} 直近1.5秒の犬の位置
+  var lastHeadingAtRefusal = 0;
+  var multiPullBuffer = [];   // {angle,t}
+
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+  function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+  function angleDiffDeg(a, b) {
+    var d = (a - b) * 180 / Math.PI;
+    d = ((d % 360) + 360) % 360;
+    if (d > 180) d -= 360;
+    return d;
+  }
+  function randomRange(min, max) { return min + Math.random() * (max - min); }
+  function maxSegmentDeviationDeg(points, overallAngle) {
+    var maxDev = 0;
+    for (var i = 1; i < points.length; i++) {
+      var dx = points[i].x - points[i - 1].x, dy = points[i].y - points[i - 1].y;
+      if (Math.hypot(dx, dy) < 2) continue; // ジッター無視
+      var segAngle = Math.atan2(dy, dx);
+      var dev = Math.abs(angleDiffDeg(segAngle, overallAngle));
+      if (dev > maxDev) maxDev = dev;
+    }
+    return maxDev;
+  }
+
+  function updateScoreDisplay() {
+    var episodeSum = episodes.reduce(function (s, e) { return s + e.score; }, 0);
+    scoreValueEl.textContent = episodeSum + flowerBonusTotal;
+  }
+
+  function updateEpisodeCounter() {
+    episodeCounterEl.textContent = "拒否柴 " + episodeIndex + "/" + TOTAL_EPISODES;
+  }
+
+  function showScorePopup(points, x, y) {
     var popup = document.createElement("div");
     popup.className = "scorePopup";
     popup.textContent = "+" + points;
@@ -439,21 +762,43 @@
     var el = document.createElement("div");
     el.className = "dog " + selectedBreed;
     el.innerHTML =
-      '<div class="tail"></div>' +
-      '<div class="leg l1"></div>' +
-      '<div class="leg l2"></div>' +
-      '<div class="body"></div>' +
-      '<div class="ear left"></div>' +
-      '<div class="ear right"></div>' +
-      '<div class="head"></div>' +
-      '<div class="muzzle"></div>' +
-      '<div class="nose"></div>' +
-      '<div class="eye left"></div>' +
-      '<div class="eye right"></div>';
+      '<div class="shadow"></div>' +
+      '<div class="dogInner">' +
+        '<div class="tail"></div>' +
+        '<div class="leg l1"></div>' +
+        '<div class="leg l2"></div>' +
+        '<div class="body"></div>' +
+        '<div class="ear left"></div>' +
+        '<div class="ear right"></div>' +
+        '<div class="head"></div>' +
+        '<div class="muzzle"></div>' +
+        '<div class="nose"></div>' +
+        '<div class="eye left"></div>' +
+        '<div class="eye right"></div>' +
+      '</div>' +
+      '<div class="speechBubble">💭</div>';
     return el;
   }
 
-  // ---- Markings & flowers ----
+  // ---- breed selection previews ----
+  var choiceEls = document.querySelectorAll(".dog-choice");
+  choiceEls.forEach(function (choice) {
+    var b = choice.getAttribute("data-breed");
+    var preview = choice.querySelector(".preview");
+    var previewDog = buildDog(b);
+    previewDog.style.position = "relative";
+    previewDog.style.left = "0";
+    previewDog.style.top = "6px";
+    preview.appendChild(previewDog);
+  });
+  choiceEls.forEach(function (choice) {
+    choice.addEventListener("click", function () {
+      breed = choice.getAttribute("data-breed");
+      startGame();
+    });
+  });
+
+  // ==================== マーキング & 花 ====================
   var MARK_INTERVAL = 42; // px of travel between markings
   var distSinceMark = 9999;
   var markings = []; // {el, x, y}
@@ -553,7 +898,410 @@
     flowers.push({ el: el, x: x, y: y, points: type.points, radius: type.radius });
   }
 
-  // ---- Movement ----
+  function addFlowerScore(points, x, y) {
+    flowerBonusTotal += points;
+    updateScoreDisplay();
+    showScorePopup(points, x, y);
+  }
+
+  // ==================== 拒否柴: 見た目 / バナー ====================
+  function showRefusalBanner() {
+    refusalBannerEl.classList.add("show");
+    updateRefusalBannerTime(performance.now());
+  }
+  function hideRefusalBanner() {
+    refusalBannerEl.classList.remove("show");
+  }
+  function updateRefusalBannerTime(timestamp) {
+    var elapsed = (timestamp - refusalStartTime) / 1000;
+    if (elapsed < 0) elapsed = 0;
+    refusalBannerTimeEl.textContent = elapsed.toFixed(1) + "秒";
+  }
+
+  function computeLastHeading() {
+    if (dogHistory.length < 2) return lastHeadingAtRefusal || 0;
+    var start = dogHistory[0], end = dogHistory[dogHistory.length - 1];
+    if (start.x === end.x && start.y === end.y) return lastHeadingAtRefusal || 0;
+    return Math.atan2(end.y - start.y, end.x - start.x);
+  }
+
+  function setGestureCanvasActive(active) {
+    gestureCanvas.classList.toggle("active", active);
+  }
+
+  function spawnSuccessBurst(x, y) {
+    var container = document.createElement("div");
+    container.className = "burst";
+    container.style.left = x + "px";
+    container.style.top = y + "px";
+    var icons = ["✨", "⭐", "💖", "✨", "⭐"];
+    for (var i = 0; i < icons.length; i++) {
+      var span = document.createElement("span");
+      span.className = "spark";
+      span.textContent = icons[i];
+      var angle = (Math.PI * 2 / icons.length) * i;
+      var radius = 34;
+      span.style.setProperty("--dx", (Math.cos(angle) * radius) + "px");
+      span.style.setProperty("--dy", (Math.sin(angle) * radius) + "px");
+      span.style.animationDelay = (i * 0.03) + "s";
+      container.appendChild(span);
+    }
+    gameArea.appendChild(container);
+    setTimeout(function () { container.remove(); }, 700);
+  }
+
+  function triggerRefusal(timestamp) {
+    state = "REFUSING";
+    refusalStartTime = timestamp;
+    firstRefusalDone = true;
+    dogEl.classList.add("refusing");
+    lastHeadingAtRefusal = computeLastHeading();
+    showRefusalBanner();
+    setGestureCanvasActive(true);
+  }
+
+  function scheduleNextRefusalTimer(baseTime) {
+    var delay = randomRange(NEXT_REFUSAL_MIN_MS, NEXT_REFUSAL_MAX_MS);
+    refusalTimerFireAt = (baseTime !== undefined ? baseTime : performance.now()) + delay;
+  }
+
+  function resolveRefusal(gestureType) {
+    if (state !== "REFUSING") return;
+    var now = performance.now();
+    var elapsedSeconds = (now - refusalStartTime) / 1000;
+    var episodeScore = Math.round(clamp(BASE_SCORE - DECAY_PER_SEC * elapsedSeconds, MIN_SCORE, BASE_SCORE));
+    episodeIndex++;
+    episodes.push({ index: episodeIndex, duration: elapsedSeconds, score: episodeScore, gesture: gestureType });
+    updateScoreDisplay();
+    showScorePopup(episodeScore, dogX + DOG_W / 2, dogY - 6);
+    spawnSuccessBurst(dogX + DOG_W / 2, dogY + DOG_H / 2);
+
+    dogEl.classList.remove("refusing");
+    hideRefusalBanner();
+    setGestureCanvasActive(false);
+    clearGestureCanvas();
+    updateEpisodeCounter();
+    multiPullBuffer = [];
+
+    if (episodeIndex >= TOTAL_EPISODES) {
+      endGame();
+    } else {
+      state = "WALKING";
+      scheduleNextRefusalTimer(now);
+    }
+  }
+
+  function playFailReaction() {
+    dogEl.classList.add("reactNo");
+    setTimeout(function () { if (dogEl) dogEl.classList.remove("reactNo"); }, 330);
+  }
+
+  // ==================== ジェスチャー認識 ====================
+  function resizeGestureCanvas() {
+    gestureCanvas.width = gameArea.clientWidth;
+    gestureCanvas.height = gameArea.clientHeight;
+  }
+  window.addEventListener("resize", resizeGestureCanvas);
+
+  function clearGestureCanvas() {
+    gctx.clearRect(0, 0, gestureCanvas.width, gestureCanvas.height);
+  }
+
+  function toLocalPoint(e) {
+    var r = gestureCanvas.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top, t: performance.now() };
+  }
+
+  function getBakeryPos() {
+    var r = bakeryIcon.getBoundingClientRect();
+    var gr = gameArea.getBoundingClientRect();
+    return { x: r.left - gr.left + r.width / 2, y: r.top - gr.top + r.height / 2 };
+  }
+
+  function computeFeatures(points) {
+    var n = points.length;
+    var pathLength = 0;
+    for (var i = 1; i < n; i++) pathLength += dist(points[i - 1], points[i]);
+    var first = points[0], last = points[n - 1];
+    var displacement = dist(first, last);
+    var duration = last.t - first.t;
+
+    var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, sumX = 0, sumY = 0;
+    for (i = 0; i < n; i++) {
+      var p = points[i];
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+      sumX += p.x; sumY += p.y;
+    }
+    var bboxW = maxX - minX, bboxH = maxY - minY;
+    var centroid = { x: sumX / n, y: sumY / n };
+    var straightness = pathLength > 0 ? displacement / pathLength : 0;
+    var closedRatio = displacement / Math.max(bboxW, bboxH, 1);
+
+    var radii = [], sumR = 0;
+    for (i = 0; i < n; i++) {
+      var r = dist(points[i], centroid);
+      radii.push(r);
+      sumR += r;
+    }
+    var avgRadius = sumR / n;
+    var varR = 0;
+    for (i = 0; i < n; i++) varR += (radii[i] - avgRadius) * (radii[i] - avgRadius);
+    var sdR = Math.sqrt(varR / n);
+    var radiusCV = avgRadius > 0 ? sdR / avgRadius : 0;
+
+    var primaryAxis = bboxW >= bboxH ? "x" : "y";
+    var secondaryAxis = primaryAxis === "x" ? "y" : "x";
+
+    var reversalsPrimary = 0, lastSign = 0;
+    for (i = 1; i < n; i++) {
+      var d = points[i][primaryAxis] - points[i - 1][primaryAxis];
+      if (Math.abs(d) < 2) continue;
+      var sign = d > 0 ? 1 : -1;
+      if (lastSign !== 0 && sign !== lastSign) reversalsPrimary++;
+      lastSign = sign;
+    }
+
+    var waveCount = 0, dir = 0, lastExtreme = points[0][secondaryAxis];
+    for (i = 1; i < n; i++) {
+      var d2 = points[i][secondaryAxis] - points[i - 1][secondaryAxis];
+      if (Math.abs(d2) < 1) continue;
+      var s2 = d2 > 0 ? 1 : -1;
+      if (dir !== 0 && s2 !== dir) {
+        if (Math.abs(points[i - 1][secondaryAxis] - lastExtreme) >= 8) {
+          waveCount++;
+          lastExtreme = points[i - 1][secondaryAxis];
+        }
+      }
+      dir = s2;
+    }
+
+    var sampled = [];
+    for (i = 0; i < n; i += 5) sampled.push(points[i]);
+    if (sampled[sampled.length - 1] !== points[n - 1]) sampled.push(points[n - 1]);
+    var cornerCount = 0;
+    for (i = 1; i < sampled.length - 1; i++) {
+      var v1x = sampled[i].x - sampled[i - 1].x, v1y = sampled[i].y - sampled[i - 1].y;
+      var v2x = sampled[i + 1].x - sampled[i].x, v2y = sampled[i + 1].y - sampled[i].y;
+      var len1 = Math.hypot(v1x, v1y), len2 = Math.hypot(v2x, v2y);
+      if (len1 < 1 || len2 < 1) continue;
+      var cos = (v1x * v2x + v1y * v2y) / (len1 * len2);
+      cos = Math.max(-1, Math.min(1, cos));
+      var angle = Math.acos(cos) * 180 / Math.PI;
+      if (angle >= 60 && angle <= 120) cornerCount++;
+    }
+
+    var avgSpeed = duration > 0 ? pathLength / (duration / 1000) : 0;
+
+    return {
+      pathLength: pathLength, displacement: displacement, duration: duration,
+      bboxW: bboxW, bboxH: bboxH, centroid: centroid,
+      straightness: straightness, closedRatio: closedRatio,
+      avgRadius: avgRadius, radiusCV: radiusCV,
+      reversalsPrimary: reversalsPrimary, waveCount: waveCount, cornerCount: cornerCount,
+      avgSpeed: avgSpeed, first: first, last: last
+    };
+  }
+
+  function recognizeStroke(points) {
+    var f = computeFeatures(points);
+    var dogCenter = { x: dogX + DOG_W / 2, y: dogY + DOG_H / 2 };
+    f.startDistToDog = dist(points[0], dogCenter);
+    f.distCentroidDog = dist(f.centroid, dogCenter);
+    f.angle = Math.atan2(f.last.y - f.first.y, f.last.x - f.first.x);
+
+    var dogCorners = [
+      { x: dogX, y: dogY }, { x: dogX + DOG_W, y: dogY },
+      { x: dogX, y: dogY + DOG_H }, { x: dogX + DOG_W, y: dogY + DOG_H }
+    ];
+    f.enclosesDog = f.closedRatio <= 0.35 && dogCorners.every(function (c) {
+      var d = dist(c, f.centroid);
+      return d >= f.avgRadius * 0.6 && d <= f.avgRadius * 1.4;
+    });
+
+    // 0. 複数方向プル判定用バッファ更新
+    var now = performance.now();
+    multiPullBuffer = multiPullBuffer.filter(function (e) { return now - e.t <= 3000; });
+    if (f.straightness >= 0.7 && f.pathLength >= 40 && f.startDistToDog <= DOG_PROXIMITY_RADIUS) {
+      multiPullBuffer.push({ angle: f.angle, t: now });
+    }
+
+    // 1. MULTI_PULL
+    if (multiPullBuffer.length >= 3) {
+      var octants = {};
+      multiPullBuffer.forEach(function (e) {
+        var oc = ((Math.round((e.angle + Math.PI * 2) / (Math.PI / 4)) % 8) + 8) % 8;
+        octants[oc] = true;
+      });
+      if (Object.keys(octants).length >= 3) {
+        multiPullBuffer = [];
+        return "MULTI_PULL";
+      }
+    }
+
+    // 2. TAXI
+    var bboxRatio = f.bboxW / Math.max(f.bboxH, 1);
+    if (f.closedRatio <= 0.35 && f.cornerCount >= 3 &&
+        bboxRatio >= 0.4 && bboxRatio <= 2.5 &&
+        f.radiusCV > 0.10 && f.distCentroidDog <= 100) {
+      return "TAXI";
+    }
+
+    // 3. TREAT
+    if (f.closedRatio <= 0.35 && f.avgRadius >= 8 && f.avgRadius <= 30 &&
+        f.radiusCV <= 0.35 && f.distCentroidDog <= DOG_PROXIMITY_RADIUS) {
+      return "TREAT";
+    }
+
+    // 4. HUG
+    if (f.enclosesDog && f.avgRadius >= 35 && f.avgRadius <= 100 &&
+        f.radiusCV <= 0.35 && f.distCentroidDog <= 25) {
+      return "HUG";
+    }
+
+    // 5. TUG
+    var primaryDim = Math.max(f.bboxW, f.bboxH);
+    var secondaryDim = Math.min(f.bboxW, f.bboxH);
+    if (f.startDistToDog <= DOG_PROXIMITY_RADIUS && f.duration <= 1200 &&
+        f.reversalsPrimary >= 4 && f.avgSpeed >= 500 &&
+        primaryDim >= 15 && primaryDim <= 90 && secondaryDim < 40) {
+      return "TUG";
+    }
+
+    // 6. RETRACE
+    var targetAngle = lastHeadingAtRefusal + Math.PI;
+    if (f.straightness >= 0.75 && f.startDistToDog <= DOG_PROXIMITY_RADIUS &&
+        f.pathLength >= 60 && Math.abs(angleDiffDeg(f.angle, targetAngle)) <= 30) {
+      return "RETRACE";
+    }
+
+    // 7. LEAD_TO_BAKERY
+    var bakeryPos = getBakeryPos();
+    var toBakeryAngle = Math.atan2(bakeryPos.y - dogCenter.y, bakeryPos.x - dogCenter.x);
+    var dogToBakeryDist = dist(dogCenter, bakeryPos);
+    if (f.startDistToDog <= DOG_PROXIMITY_RADIUS &&
+        dist(f.last, bakeryPos) <= 40 &&
+        f.straightness >= 0.6 &&
+        Math.abs(angleDiffDeg(f.angle, toBakeryAngle)) <= 25 &&
+        f.pathLength >= dogToBakeryDist * 0.6 &&
+        maxSegmentDeviationDeg(points, f.angle) <= 25) {
+      return "LEAD_TO_BAKERY";
+    }
+
+    // 8. SONG
+    if (f.closedRatio > 0.5 && f.waveCount >= 3 &&
+        f.duration >= 400 && f.duration <= 3000 && f.startDistToDog <= 90) {
+      return "SONG";
+    }
+
+    return null;
+  }
+
+  var currentStroke = null;
+  var activePointerId = null;
+
+  gestureCanvas.addEventListener("pointerdown", function (e) {
+    if (state !== "REFUSING") return;
+    activePointerId = e.pointerId;
+    try { gestureCanvas.setPointerCapture(e.pointerId); } catch (err) { /* noop */ }
+    var pt = toLocalPoint(e);
+    currentStroke = [pt];
+    clearGestureCanvas();
+    gctx.beginPath();
+    gctx.moveTo(pt.x, pt.y);
+    e.preventDefault();
+  });
+
+  gestureCanvas.addEventListener("pointermove", function (e) {
+    if (currentStroke === null || e.pointerId !== activePointerId) return;
+    var pt = toLocalPoint(e);
+    currentStroke.push(pt);
+    gctx.strokeStyle = "rgba(255,138,61,0.85)";
+    gctx.lineWidth = 4;
+    gctx.lineCap = "round";
+    gctx.lineJoin = "round";
+    gctx.lineTo(pt.x, pt.y);
+    gctx.stroke();
+    e.preventDefault();
+  });
+
+  gestureCanvas.addEventListener("pointerup", function (e) {
+    if (currentStroke === null || e.pointerId !== activePointerId) return;
+    var stroke = currentStroke;
+    currentStroke = null;
+    activePointerId = null;
+    handleStrokeEnd(stroke);
+  });
+
+  gestureCanvas.addEventListener("pointercancel", function () {
+    currentStroke = null;
+    activePointerId = null;
+    clearGestureCanvas();
+  });
+
+  function handleStrokeEnd(points) {
+    if (state !== "REFUSING") { clearGestureCanvas(); return; }
+    var duration = points[points.length - 1].t - points[0].t;
+    if (points.length < MIN_POINTS || duration < MIN_DURATION_MS) {
+      clearGestureCanvas();
+      return;
+    }
+    var gesture = recognizeStroke(points);
+    if (gesture) {
+      resolveRefusal(gesture);
+    } else {
+      playFailReaction();
+      clearGestureCanvas();
+    }
+  }
+
+  // ==================== 終了 / リザルト ====================
+  function endGame() {
+    state = "RESULT";
+    setGestureCanvasActive(false);
+    showResultScreen();
+  }
+
+  function showResultScreen() {
+    var episodeSum = episodes.reduce(function (s, e) { return s + e.score; }, 0);
+    resultTotalValueEl.textContent = episodeSum + flowerBonusTotal;
+    resultFlowerValueEl.textContent = flowerBonusTotal;
+    resultTableBodyEl.innerHTML = "";
+    episodes.forEach(function (ep) {
+      var tr = document.createElement("tr");
+      var tdIndex = document.createElement("td"); tdIndex.textContent = ep.index;
+      var tdTime = document.createElement("td"); tdTime.textContent = ep.duration.toFixed(1) + "秒";
+      var tdScore = document.createElement("td"); tdScore.textContent = ep.score;
+      tr.appendChild(tdIndex); tr.appendChild(tdTime); tr.appendChild(tdScore);
+      resultTableBodyEl.appendChild(tr);
+    });
+    resultScreen.style.display = "flex";
+  }
+
+  playAgainBtn.addEventListener("click", function () {
+    resultScreen.style.display = "none";
+    clearGameArea();
+    dogEl = null;
+    episodes = [];
+    episodeIndex = 0;
+    flowerBonusTotal = 0;
+    totalDistanceWalked = 0;
+    firstRefusalDone = false;
+    dogHistory = [];
+    lastHeadingAtRefusal = 0;
+    multiPullBuffer = [];
+    updateScoreDisplay();
+    updateEpisodeCounter();
+    hideRefusalBanner();
+    setGestureCanvasActive(false);
+    clearGestureCanvas();
+    startScreen.style.display = "flex";
+    state = "BREED_SELECT";
+  });
+
+  // ==================== 移動 ====================
   var keys = {};
   window.addEventListener("keydown", function (e) {
     if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.key) !== -1) {
@@ -568,88 +1316,132 @@
   var SPEED = 220; // px per second
   var lastTime = null;
 
-  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
-
   function tick(timestamp) {
     if (lastTime === null) lastTime = timestamp;
     var dt = (timestamp - lastTime) / 1000;
     lastTime = timestamp;
     if (dt > 0.1) dt = 0.1;
 
-    if (dogEl) {
-      var dx = 0, dy = 0;
-      if (keys["ArrowUp"]) dy -= 1;
-      if (keys["ArrowDown"]) dy += 1;
-      if (keys["ArrowLeft"]) dx -= 1;
-      if (keys["ArrowRight"]) dx += 1;
+    if (dogEl && state !== "RESULT" && state !== "BREED_SELECT") {
+      if (state === "WALKING") {
+        var dx = 0, dy = 0;
+        if (keys["ArrowUp"]) dy -= 1;
+        if (keys["ArrowDown"]) dy += 1;
+        if (keys["ArrowLeft"]) dx -= 1;
+        if (keys["ArrowRight"]) dx += 1;
 
-      if (dx !== 0 || dy !== 0) {
-        var len = Math.sqrt(dx * dx + dy * dy);
-        dx = (dx / len) * SPEED * dt;
-        dy = (dy / len) * SPEED * dt;
+        if (dx !== 0 || dy !== 0) {
+          var len = Math.sqrt(dx * dx + dy * dy);
+          dx = (dx / len) * SPEED * dt;
+          dy = (dy / len) * SPEED * dt;
 
-        var w = gameArea.clientWidth;
-        var h = gameArea.clientHeight;
-        dogX = clamp(dogX + dx, 0, w - DOG_W);
-        dogY = clamp(dogY + dy, 0, h - DOG_H);
+          var w = gameArea.clientWidth;
+          var h = gameArea.clientHeight;
+          dogX = clamp(dogX + dx, 0, w - DOG_W);
+          dogY = clamp(dogY + dy, 0, h - DOG_H);
 
-        if (dx < 0 && !facingLeft) { facingLeft = true; dogEl.classList.add("facing-left"); }
-        else if (dx > 0 && facingLeft) { facingLeft = false; dogEl.classList.remove("facing-left"); }
+          if (dx < 0 && !facingLeft) { facingLeft = true; dogEl.classList.add("facing-left"); }
+          else if (dx > 0 && facingLeft) { facingLeft = false; dogEl.classList.remove("facing-left"); }
 
-        dogEl.style.left = dogX + "px";
-        dogEl.style.top = dogY + "px";
+          dogEl.style.left = dogX + "px";
+          dogEl.style.top = dogY + "px";
 
-        var moved = Math.sqrt(dx * dx + dy * dy);
-        distSinceMark += moved;
-        if (distSinceMark >= MARK_INTERVAL) {
-          distSinceMark = 0;
-          addMarking(dogX + DOG_W / 2, dogY + DOG_H - 6);
+          var moved = Math.sqrt(dx * dx + dy * dy);
+          totalDistanceWalked += moved;
+          distSinceMark += moved;
+          if (distSinceMark >= MARK_INTERVAL) {
+            distSinceMark = 0;
+            addMarking(dogX + DOG_W / 2, dogY + DOG_H - 6);
+          }
         }
+
+        // 犬の位置履歴(直近1.5秒)
+        dogHistory.push({ x: dogX + DOG_W / 2, y: dogY + DOG_H / 2, t: timestamp });
+        while (dogHistory.length && (timestamp - dogHistory[0].t) > 1500) dogHistory.shift();
+
+        // collision with flowers
+        var dogCenterX = dogX + DOG_W / 2;
+        var dogCenterY = dogY + DOG_H / 2;
+        var dogRadius = 22;
+        for (var i = flowers.length - 1; i >= 0; i--) {
+          var f = flowers[i];
+          var ddx = dogCenterX - f.x;
+          var ddy = dogCenterY - f.y;
+          var d = Math.sqrt(ddx * ddx + ddy * ddy);
+          if (d < dogRadius + f.radius) {
+            addFlowerScore(f.points, f.x, f.y - 20);
+            f.el.remove();
+            flowers.splice(i, 1);
+          }
+        }
+
+        // 拒否柴発生判定
+        var readyForFirst = firstRefusalDone ||
+          ((timestamp - gameStartTime) >= FIRST_REFUSAL_MIN_ELAPSED_MS &&
+           totalDistanceWalked >= FIRST_REFUSAL_MIN_DISTANCE_PX);
+        if (readyForFirst && timestamp >= refusalTimerFireAt) {
+          triggerRefusal(timestamp);
+        }
+      } else if (state === "REFUSING") {
+        updateRefusalBannerTime(timestamp);
       }
 
-      // collision with flowers
-      var dogCenterX = dogX + DOG_W / 2;
-      var dogCenterY = dogY + DOG_H / 2;
-      var dogRadius = 22;
-      for (var i = flowers.length - 1; i >= 0; i--) {
-        var f = flowers[i];
-        var ddx = dogCenterX - f.x;
-        var ddy = dogCenterY - f.y;
-        var dist = Math.sqrt(ddx * ddx + ddy * ddy);
-        if (dist < dogRadius + f.radius) {
-          addScore(f.points, f.x, f.y - 20);
-          f.el.remove();
-          flowers.splice(i, 1);
-        }
+      // セーフティタイムアウト
+      if (gameStartTime !== null && (timestamp - gameStartTime) >= SAFETY_TIME_LIMIT_MS) {
+        endGame();
       }
     }
 
     requestAnimationFrame(tick);
   }
+  requestAnimationFrame(tick);
 
-  // ---- Start screen handling ----
-  var choices = document.querySelectorAll(".dog-choice");
-  choices.forEach(function (choice) {
-    choice.addEventListener("click", function () {
-      breed = choice.getAttribute("data-breed");
-      startGame();
+  // ==================== ゲーム開始 / リセット ====================
+  function clearGameArea() {
+    var children = Array.prototype.slice.call(gameArea.children);
+    children.forEach(function (el) {
+      if (el.id !== "gestureCanvas" && el.id !== "bakeryIcon") el.remove();
     });
-  });
+    markings.length = 0;
+    flowers.length = 0;
+    distSinceMark = 9999;
+  }
 
   function startGame() {
     startScreen.style.display = "none";
+    resultScreen.style.display = "none";
+    clearGameArea();
     scatterTufts();
+    resizeGestureCanvas();
 
     dogEl = buildDog(breed);
     var w = gameArea.clientWidth;
     var h = gameArea.clientHeight;
     dogX = w / 2 - DOG_W / 2;
     dogY = h / 2 - DOG_H / 2;
+    facingLeft = false;
     dogEl.style.left = dogX + "px";
     dogEl.style.top = dogY + "px";
     gameArea.appendChild(dogEl);
 
-    requestAnimationFrame(tick);
+    episodes = [];
+    episodeIndex = 0;
+    flowerBonusTotal = 0;
+    totalDistanceWalked = 0;
+    firstRefusalDone = false;
+    dogHistory = [];
+    lastHeadingAtRefusal = 0;
+    multiPullBuffer = [];
+    updateScoreDisplay();
+    updateEpisodeCounter();
+    hideRefusalBanner();
+    setGestureCanvasActive(false);
+    clearGestureCanvas();
+
+    gameStartTime = performance.now();
+    scheduleNextRefusalTimer(gameStartTime);
+
+    state = "WALKING";
   }
 })();
 </script>
