@@ -1078,19 +1078,53 @@
       dir = s2;
     }
 
-    var sampled = [];
-    for (i = 0; i < n; i += 5) sampled.push(points[i]);
-    if (sampled[sampled.length - 1] !== points[n - 1]) sampled.push(points[n - 1]);
+    // 角(コーナー)検出は生の点数(=描画速度・サンプリング頻度)に依存させず、
+    // 弧長ベースの一定距離窓で方向変化を測ることで四角形・三角形どちらでも安定して検出する。
     var cornerCount = 0;
-    for (i = 1; i < sampled.length - 1; i++) {
-      var v1x = sampled[i].x - sampled[i - 1].x, v1y = sampled[i].y - sampled[i - 1].y;
-      var v2x = sampled[i + 1].x - sampled[i].x, v2y = sampled[i + 1].y - sampled[i].y;
-      var len1 = Math.hypot(v1x, v1y), len2 = Math.hypot(v2x, v2y);
-      if (len1 < 1 || len2 < 1) continue;
-      var cos = (v1x * v2x + v1y * v2y) / (len1 * len2);
-      cos = Math.max(-1, Math.min(1, cos));
-      var angle = Math.acos(cos) * 180 / Math.PI;
-      if (angle >= 60 && angle <= 120) cornerCount++;
+    if (n >= 3 && pathLength > 0) {
+      var cCum = [0];
+      for (i = 1; i < n; i++) cCum.push(cCum[i - 1] + dist(points[i - 1], points[i]));
+      var cornerWindow = Math.max(12, Math.min(30, pathLength * 0.08));
+      var pointAtCyclicDist = function (fromCum, delta) {
+        var goal = fromCum + delta;
+        while (goal < 0) goal += pathLength;
+        while (goal > pathLength) goal -= pathLength;
+        var j = 0;
+        for (; j < n - 1; j++) { if (cCum[j] <= goal && goal <= cCum[j + 1]) break; }
+        if (j >= n - 1) j = n - 2;
+        var segLen = cCum[j + 1] - cCum[j];
+        var f = segLen > 0 ? (goal - cCum[j]) / segLen : 0;
+        return { x: points[j].x + (points[j + 1].x - points[j].x) * f, y: points[j].y + (points[j + 1].y - points[j].y) * f };
+      };
+      var turns = [];
+      for (i = 0; i < n; i++) {
+        var back = pointAtCyclicDist(cCum[i], -cornerWindow);
+        var fwd = pointAtCyclicDist(cCum[i], cornerWindow);
+        var v1x = points[i].x - back.x, v1y = points[i].y - back.y;
+        var v2x = fwd.x - points[i].x, v2y = fwd.y - points[i].y;
+        var len1 = Math.hypot(v1x, v1y), len2 = Math.hypot(v2x, v2y);
+        if (len1 < 1 || len2 < 1) { turns.push(0); continue; }
+        var cos = (v1x * v2x + v1y * v2y) / (len1 * len2);
+        cos = Math.max(-1, Math.min(1, cos));
+        turns.push(Math.acos(cos) * 180 / Math.PI);
+      }
+      var lastCornerCum = -Infinity, firstCornerCum = null;
+      for (i = 0; i < n; i++) {
+        if (turns[i] < 45 || turns[i] > 150) continue;
+        var isLocalMax = true;
+        for (var k = Math.max(0, i - 2); k <= Math.min(n - 1, i + 2); k++) {
+          if (turns[k] > turns[i]) { isLocalMax = false; break; }
+        }
+        if (isLocalMax && (cCum[i] - lastCornerCum) >= cornerWindow) {
+          cornerCount++;
+          lastCornerCum = cCum[i];
+          if (firstCornerCum === null) firstCornerCum = cCum[i];
+        }
+      }
+      // 始点=終点付近をまたぐ角が始点側・終点側で二重カウントされるのを防ぐ
+      if (cornerCount >= 2 && firstCornerCum !== null && (pathLength - lastCornerCum + firstCornerCum) < cornerWindow) {
+        cornerCount--;
+      }
     }
 
     var avgSpeed = duration > 0 ? pathLength / (duration / 1000) : 0;
@@ -1145,7 +1179,7 @@
     var bboxRatio = f.bboxW / Math.max(f.bboxH, 1);
     if (f.closedRatio <= 0.35 && f.cornerCount >= 3 &&
         bboxRatio >= 0.4 && bboxRatio <= 2.5 &&
-        f.radiusCV > 0.10 && f.distCentroidDog <= 100) {
+        f.radiusCV > 0.10 && f.radiusCV <= 0.35 && f.distCentroidDog <= 100) {
       return "TAXI";
     }
 
